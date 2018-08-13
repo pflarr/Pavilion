@@ -130,12 +130,25 @@ def build_results_dir(params):
     logger = logging.getLogger('pav.runjob.build_results_dir')
     lh = params['log_handle']
 
+    now = datetime.datetime.now()
+
     root_result_dir = params['results']['root']
     os.environ["PV_RESULT_ROOT"] = root_result_dir
-    name = params['name']
-    new_dir = root_result_dir + "/gzshared/"
-    date_parts = datetime.datetime.now().strftime("%Y/%Y-%m/%Y-%m-%d/")
     target = platform.uname()[1].split(".", 1)[0]
+    name = params['name']
+
+    results_path = [root_result_dir,
+                    '{0:02d}'.format(now.year),
+                    '{0:02d}'.format(now.month),
+                    '{0:02d}'.format(now.day),
+                    target,
+                    name,
+                    '{ts}__{pid}'.format(ts=now.strftime('%H%M%S'),
+                                         pid=os.getpid())
+                    ]
+
+    new_dir = root_result_dir
+    date_parts = datetime.datetime.now().strftime("%Y/%m/%d/")
     new_dir = new_dir + date_parts + target + "/" + name + "/"
     pid = str(os.getpid())
     results_now = datetime.datetime.now()
