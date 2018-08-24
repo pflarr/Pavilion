@@ -4,20 +4,24 @@ We're taking a hard look at Pavilion as it is: what works, what doesn't, what we
 to it. We'll use that to design a set of changes to improve Pavilion's usability, stability, and
 extensibility. 
 
-#### Re-design Philosophy
+#### Re-design Requirements
  
  - Should be suitable for postDST, automated, and acceptance testing. 
  - Tests should be trackable, start to finish.
  - Test status should always be known, even from other machines.
+ - Anything the user needs from the results directory should be accessible from the pav command
+   line.
  - Building tests should be separated from running a test.
   - The test configs should support building most tests via configuration alone.
- - Test builds should be cached and reused.
- - Output should be easy to parse.
- - Tests should be able to inherit configuration from other tests in the same suite.
- - Users should rarely, if ever, have to actually look in a test run's result directory to find out
-   what is going on.
- - Backwards compatibility will be broken.
+  - Tests that are builds would still be built within the test run.
+  - Test builds should be cached and reused.
+ - Pavilion output should be easy to parse programatically.
+ - Test configurations should be easy to organize with little repetition.
+ - Test configuration should be flexible enough to remove the need for 'runit' scripts in
+   most cases.
  - The last vestiges of gazebo should go away (including all perl).
+
+**Backwards compatibility will be broken.**
  
 ## Test Builds
 
@@ -112,3 +116,59 @@ to go, the results directory created, and the run will be trackable. Then for ea
 separate, detached pavilion process will be started to follow that run to completion. It will
 continue updating the status through each step and monitor the status of the scheduler task (or
 process PID).
+
+## Configuration
+
+We will be keeping most of the current config syntax, while making improvements in a few key areas.
+
+### Separation of Host, Mode, and Test
+
+This has already been implemented, and will remain in 2.0.
+
+Rather than a directory per host, there is now a general Pavilion config directory with
+subdirectories with configs for *hosts*, *modes*, and *tests*. The *host* configs describe the
+specific limits of a given host to use for tests run on that host, much like the old
+`default_test_config.yaml` files. *Mode* configs are an optional layer of configuration that allow
+for easy specification of the different ways in which you might run a test on a host. For example,
+the `postDST` mode sets the slurm reservation and qos to `PreventMaint` and `hpctest` respectively.
+Finally, the *test configs* describe, in a host agnostic manner, how to run the test. 
+
+This setup allows us to maintain a single configuration file for each test and host, greatly
+simplifying the process of running and setting up tests.
+
+Currently *host* and *mode* configs use dummy values for required keys, and set up a dummy test that
+gets applied globally. In 2.0, *host* and *mode* config files will contain the test config at the
+top level of the file, and no keys will be required. 
+
+### Test Configs
+
+    - Drop the **name** required key, instead using the key value for the test as the name.
+    - **test src** should also be optional, as some test may simply run shell commands.
+    - **test_args** will be lists instead of strings, for readability.
+ 
+#### Test iterations
+
+Pavilion currently supports giving config items as a list when a string is expected, and then
+producing a version of that test for each combination of list items. This functionality will remain
+in 2.0. 
+
+#### Test inheritance
+
+Tests should also be able to inherit from each other. This would add a **inherits\_from** key to
+test configs. Config items in the child test would override those in the parent. Only single
+inheritance would be allowed. 
+
+#### Substitution 
+
+All fields in the config can contain python style format escapes. IE `{key}` or `key[subkey]`.
+Pavilion will provide a dict of values as keys for these escapes, such has *host* and *os*, the test
+config itself, and dynamically determined parameters from scheduler plugins. If the builtin python
+format systax is used (which it probably will be), it limits the depth of test configs to two (which
+they already are).
+
+#### Other Config Changes
+
+ - Pavilion currently supports placing a list of tests to run in configuration files. This
+   functionality will be moved to a command line option.
+ - Argument strings (the **run:test_args** key) will be replaced with a list of string arguments.
+
